@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hang és Lélek Stúdió - Ajándékkártya</title>
-    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-    <script src="https://unpkg.com/@pdf-lib/fontkit/dist/fontkit.umd.min.js"></script>
+    <title>1Hang és Lélek Stúdió - Ajándékkártya</title>
+    <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@pdf-lib/fontkit@1.1.1/dist/fontkit.umd.min.js"></script>
     <style>
-        /* ... A CSS stílusok változatlanok maradnak ... */
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background-color: #f8f5f0; color: #4a4a4a; padding: 15px; }
         .container { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 450px; border-top: 5px solid #006b12; box-sizing: border-box; }
         h2 { margin-top: 0; color: #008321; text-align: center; font-weight: 300; letter-spacing: 1px; text-transform: uppercase; font-size: 1.4rem; }
@@ -20,14 +19,13 @@
         .btn:disabled { background: #ccc; cursor: not-allowed; }
         .btn:hover:not(:disabled) { background: #1e7a2a; transform: translateY(-2px); }
         .btn-secondary { background: #f0f0f0; color: #4a4a4a; box-shadow: none; margin-top: 10px; }
-        @media (max-width: 480px) { .container { padding: 20px; } h2 { font-size: 1.2rem; } }
     </style>
 </head>
 <body onload="initPage()">
 
 <div class="container">
     <h2>Hang és Lélek Stúdió</h2>
-    <div id="status" class="status-msg">Betöltés folyamatban...</div>
+    <div id="status" class="status-msg">Betöltés...</div>
 
     <div class="form-group">
         <label>AJÁNDÉKOZOTT NEVE:</label>
@@ -56,17 +54,18 @@
         <input type="text" id="expiryDate">
     </div>
 
-    <button class="btn" id="downloadBtn" onclick="generatePDF()" disabled>PDF GENERÁLÁSA ÉS LETÖLTÉSE</button>
-    <button class="btn btn-secondary" onclick="goToHome()">VISSZA A FŐOLDALRA</button>
+    <button class="btn" id="downloadBtn" onclick="generatePDF()" disabled>PDF GENERÁLÁSA</button>
+    <button class="btn btn-secondary" onclick="window.location.href='https://hangeslelekstudio.hu'">VISSZA</button>
 </div>
 
 <script>
     let cachedPdfBuffer = null;
     let customFont = null;
     
+    // A sablonod neve (legyen ugyanott, ahol ez a fájl!)
     const TEMPLATE_URL = 'sablon.pdf'; 
-    // Lato-Bold betűtípus URL-je (magyar ékezeteket támogató verzió)
-    const FONT_URL = 'https://fonts.gstatic.com/s/lato/v24/S6u9w4BMUTPHh6UVSwiPGQ3qCF_p.woff2';
+    // Új, megbízhatóbb Lato-Bold URL
+    const FONT_URL = 'https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/fonts/lato-bold/lato-bold.ttf';
 
     async function initPage() {
         setExpiryDate();
@@ -78,20 +77,20 @@
         try {
             // 1. Sablon betöltése
             const pdfRes = await fetch(TEMPLATE_URL);
-            if (!pdfRes.ok) throw new Error('A sablon fájl nem található!');
+            if (!pdfRes.ok) throw new Error('A sablon.pdf nem található!');
             cachedPdfBuffer = await pdfRes.arrayBuffer();
 
             // 2. Betűtípus betöltése
             const fontRes = await fetch(FONT_URL);
-            if (!fontRes.ok) throw new Error('Betűtípus nem tölthető be!');
+            if (!fontRes.ok) throw new Error('A betűtípus nem tölthető be!');
             customFont = await fontRes.arrayBuffer();
             
-            statusEl.innerText = "✓ Minden készen áll";
+            statusEl.innerText = "✓ Sablon és betűtípus kész";
             statusEl.style.color = "#2c8124";
             document.getElementById('downloadBtn').disabled = false;
         } catch (error) {
             console.error(error);
-            statusEl.innerText = "Hiba az erőforrások betöltésekor!";
+            statusEl.innerText = "Hiba: " + error.message;
             statusEl.style.color = "red";
         }
     }
@@ -111,58 +110,35 @@
         const expiry = document.getElementById('expiryDate').value;
 
         if (!name || !service) {
-            alert("Kérlek, tölts ki minden mezőt!");
+            alert("Tölts ki minden mezőt!");
             return;
         }
 
         try {
             const pdfDoc = await PDFLib.PDFDocument.load(cachedPdfBuffer);
-            
-            // Beágyazzuk a fontkit-et és a külső betűtípust
             pdfDoc.registerFontkit(fontkit);
             const embeddedFont = await pdfDoc.embedFont(customFont);
 
             const pages = pdfDoc.getPages();
             const firstPage = pages[0];
             const { height } = firstPage.getSize();
-
-            const xPos = 225; 
-            const maxSzelesseg = 280; 
             const textColor = PDFLib.rgb(0.2, 0.2, 0.2); 
 
-            // Szöveg ráírása az ÚJ betűtípussal
-            firstPage.drawText(name, {
-                x: xPos, y: height - 154, size: 18, font: embeddedFont,
-                color: textColor, maxWidth: maxSzelesseg, lineHeight: 20
-            });
-
-            firstPage.drawText(service, {
-                x: xPos, y: height - 184, size: 14, font: embeddedFont,
-                color: textColor, maxWidth: maxSzelesseg, lineHeight: 16
-            });
-
-            firstPage.drawText(expiry, {
-                x: xPos, y: height - 210, size: 14, font: embeddedFont,
-                color: textColor, maxWidth: maxSzelesseg
-            });
+            // Szövegek ráírása (koordináták maradtak)
+            firstPage.drawText(name, { x: 225, y: height - 154, size: 18, font: embeddedFont, color: textColor });
+            firstPage.drawText(service, { x: 225, y: height - 184, size: 14, font: embeddedFont, color: textColor });
+            firstPage.drawText(expiry, { x: 225, y: height - 210, size: 14, font: embeddedFont, color: textColor });
 
             const pdfBytes = await pdfDoc.save();
             const blob = new Blob([pdfBytes], { type: "application/pdf" });
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
-            
-            const safeName = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '_');
-            link.download = `Ajandekkartya_${safeName || 'kartya'}.pdf`;
+            link.download = `Ajandekkartya.pdf`;
             link.click();
-
         } catch (error) {
-            console.error(error);
-            alert("Hiba történt a PDF generálása során!");
+            alert("Hiba a generáláskor: " + error.message);
         }
     }
-
-    function goToHome() { window.location.href = "https://hangeslelekstudio.hu"; }
 </script>
-
 </body>
 </html>
